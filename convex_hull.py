@@ -79,19 +79,16 @@ def clockwise_sort(point_set):  # sorts clockwise a set of points
     return sorted(point_set, key=lambda pt: clockwise_angle(center, pt))
 
 
-def divide(point_set):  # divides a set of points to two sets
+def divide(point_set):  # divides a set of points to two equal sets
 
-    # find avg of x coordinate of all points
-    x = []
-    for point in point_set:
-        x.append(point.x)
-    x_avg = sum(x)/len(x)
+    # sort list of points based on x coordinate
+    sorted_point_set = sorted(point_set, key=lambda pt: pt.x)
 
-    # divide space using avg x
+    # divide space into equal size subsets
     point_set1 = set()
     point_set2 = set()
-    for point in point_set:
-        if point.x < x_avg:
+    for idx, point in enumerate(sorted_point_set):
+        if idx < len(sorted_point_set)/2:
             point_set1.add(point)
         else:
             point_set2.add(point)
@@ -197,7 +194,7 @@ def merge(poly1,poly2):
     points.extend([lower_tangent[1],lower_tangent[0]])
 
     # add the leftside points of the left polygon to the merged polygon
-    i = (lower_right_idx + 1) % polyL.n
+    i = (lower_left_idx + 1) % polyL.n
     while i != upper_left_idx:
         points.append(polyL.points[i])
         i = (i + 1) % polyL.n
@@ -227,10 +224,11 @@ def brute_hull(point_set):  # brute force convex hull
         point_set2 = set()  # side below the line
 
         for point3 in point_set:  # point to be checked in which side of the line it is located
-            if a * point3.x + b * point3.y + c < 0:  # if point is below line
-                point_set1.add(point3)
-            elif a * point3.x + b * point3.y + c > 0:  # if point is above line
-                point_set2.add(point3)
+            if point3 != point1 and point3 != point2:
+                if a * point3.x + b * point3.y + c < 0:  # if point is below line
+                    point_set1.add(point3)
+                elif a * point3.x + b * point3.y + c > 0:  # if point is above line
+                    point_set2.add(point3)
 
         if len(point_set1) == 0 or len(point_set2) == 0:  # if any of the sides above or below the line is empty
                 # add pair of points to the convex hull
@@ -242,12 +240,25 @@ def brute_hull(point_set):  # brute force convex hull
 
 
 def convex_hull(point_set):
-    if len(point_set) < 6:
+
+    if len(point_set) < 6:  # if the set has less than 6 points just do brute hull
         return brute_hull(point_set)
-    point_set1, point_set2 = divide(point_set)
-    poly1 = convex_hull(point_set1)
-    poly2 = convex_hull(point_set2)
-    return merge(poly1, poly2)
+
+    point_set1, point_set2 = divide(point_set)  # divide into two sets
+
+    if len(point_set1) != 0:
+        poly1 = convex_hull(point_set1)
+        #plot_convex_hull(point_set1, poly1)
+    if len(point_set2) != 0:
+        poly2 = convex_hull(point_set2)
+        #plot_convex_hull(point_set2, poly2)
+
+    if len(point_set1) != 0 and len(point_set1) != 0:  # if point sets are not empty
+        return merge(poly1, poly2)  # merge the two polygons
+    elif len(point_set1) == 0:  # if only the second point set isnt empty then return polygon 2
+        return poly2
+    else:
+        return poly1
 
 
 
