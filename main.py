@@ -1,33 +1,45 @@
 from convex_hull import *
 import pandas as pd
-import timeit # to calculate run time
+from numpy import abs, random
+from scipy import stats
+from timeit import default_timer # to calculate run time
 
-start = timeit.default_timer()  # start timing
 
-# p1 = Point(-1, 0)
-# p2 = Point(-2, 1)
-# p3 = Point(-2, 0)
-# p4 = Point(2, 0)
-# p5 = Point(2, 1)
-# p6 = Point(1, 1)
-#
-# poly3 = convex_hull((p1,p2,p3,p4,p5,p6))
-# plot_convex_hull((p1,p2,p3,p4,p5,p6),poly3)
+start = default_timer()  # start timing
 
-print('Importing file...')
+dataset_select = 1  # change dataset selection here
 
-# preproccess dataset
-dataset = pd.read_csv('crime.csv').iloc[1:80]
-dataset = dataset[dataset['HUNDRED_BLOCK'] != 'OFFSET TO PROTECT PRIVACY']  # keep only uncensored data
-dataset = dataset[['X', 'Y']]  # keep only X and Y columns
-dataset = dataset.drop_duplicates()  # keep only unique points
-# norm_dataset=(dataset-dataset.mean())/dataset.std()  # normalize dataset
-# dataset = norm_dataset
+print("Importing dataset...")
+
+# select dataset and preprocess accordingly
+if dataset_select == 0:
+    # uniform dataset of 10000 points (small)
+    dataset = pd.DataFrame(random.uniform(0, 100, size=(10000, 2)), columns=['X', 'Y'])
+
+elif dataset_select == 1:
+    # gaussian dataset of 10000 points (small)
+    dataset = pd.DataFrame(random.normal(0, 100, size=(10000, 2)), columns=['X', 'Y'])
+
+elif dataset_select == 2:
+    # vancouver crime dataset (medium)
+    dataset = pd.read_csv('vancouver_crime.csv')
+    dataset = dataset[dataset['HUNDRED_BLOCK'] != 'OFFSET TO PROTECT PRIVACY']  # keep only uncensored data
+    dataset = dataset[['X', 'Y']]  # keep only X and Y columns
+    dataset = dataset.drop_duplicates(subset='X')  # keep only points with unique x coordinates
+
+elif dataset_select == 3:
+    # philadelphia crime dataset (big)
+    dataset = pd.read_csv('philadelphia_crime.csv')[['Lon', 'Lat']]
+    dataset = dataset.dropna() # drop nan data
+    dataset = dataset.drop_duplicates(subset='Lon')  # keep only points with unique x coordinates
+
+
+dataset = dataset[(abs(stats.zscore(dataset)) < 3).all(axis=1)]  # remove outliers
 
 # create points from dataset
 points = set()
 for idx, row in dataset.iterrows():
-    points.add(Point(row['X'], row['Y']))
+    points.add(Point(row[0], row[1]))
 
 print('Done!')
 print('Generating Convex Hull...')
@@ -35,7 +47,7 @@ print('Generating Convex Hull...')
 convex_hull = convex_hull(points)  # create convex hull
 plot_convex_hull(points,convex_hull)  # plot points and convex hull of the points
 
-stop = timeit.default_timer()  # stop timer
+stop = default_timer()  # stop timer
 
 print('Done!')
 print(f'Runtime: {int((stop - start)/60)} minutes')
