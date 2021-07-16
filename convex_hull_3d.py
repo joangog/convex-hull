@@ -92,7 +92,7 @@ def merge(polyhedron1,polyhedron2):
         polyhedronL = polyhedron2
         polyhedronR = polyhedron1
 
-    # project polyhedrons on x-y plane to find upper tangent of resulting polygons (is also the tangent of polyhedrons)
+    # project polyhedrons on x-y plane (2d) to find upper tangent of resulting polygons (is also the tangent of polyhedrons)
     polygonL_points = list()
     polygonR_points = list()
     for point in polyhedronL.points:
