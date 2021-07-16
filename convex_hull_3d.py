@@ -1,8 +1,8 @@
-import math
+from math import sqrt, pow, acos, pi, degrees
 from itertools import combinations
 import matplotlib.pyplot as plt
 from mpl_toolkits.mplot3d import Axes3D
-import convex_hull_2d
+import convex_hull_2d as ch2d
 
 
 class Point:
@@ -49,197 +49,91 @@ def plot_convex_hull(point_set, polyhedron):
     polyhedron.plot()  # plot polyhedron
     plt.show()
 
+def dot(vec1,vec2):
+    return vec1.x * vec2.x + vec1.y + vec2.y + vec1.z + vec2.z
 
-def clockwise_angle(a,b):  #calculates clockwise angle of vector (a,b)
+def giftwrap_angle(vector,support_vector,giftwrap_vector):  # calculates angle between polyhedron edge and giftwrap plane
 
-    if a.x == b.x and a.y == b.y:  # if the segment length is zero return angle = 0
-        return 0
+    # project vector of polyhedron edge to the perpendicular plane of the giftwrap plane (its plane normal vector is the support vector)
+    projected_vector = Point(
+        vector.x - support_vector.x * dot(vector,support_vector) / dot(support_vector,support_vector),
+        vector.y - support_vector.y * dot(vector,support_vector) / dot(support_vector,support_vector),
+        vector.z - support_vector.z * dot(vector,support_vector) / dot(support_vector,support_vector))
 
-    base_vector = Point(0, 1)  # the vector from which we will calculate the angle of the target vector (12 o'clock)
-
-    vector = Point(b.x - a.x, b.y - a.y)  # target vector (basically the end point of a line that starts from (0,0))
-    vector_len = math.sqrt(math.pow(vector.x, 2) + math.pow(vector.y, 2))  # length of target vector
-
-    norm_vector = Point(vector.x / vector_len, vector.y / vector_len)  # normalized target vector
-
-    # calculate angle
-    dot_prod = norm_vector.x * base_vector.x + norm_vector.y * base_vector.y  # x1 * x2 + y1 * y2
-    diff_prod = norm_vector.x * base_vector.y - norm_vector.y * base_vector.x  # x1 * y2 - y1 * x2
-    angle = math.atan2(diff_prod, dot_prod)
+    # calculate angle between projected vector and giftwrap plane (its plane normal vector is the giftwrap vector)
+    angle = acos(abs(dot(vector,giftwrap_vector)/(sqrt(dot(vector))*sqrt(dot(giftwrap_vector)))))
 
     if angle < 0:  # if angle is negative convert to positive (e.x. -30 -> 330)
-        angle =  2 * math.pi + angle
-    elif angle > 2 * math.pi:  # if angle is over a full rotation, remove a full rotation (e.x. 370 -> 10)
-        angle = angle - 2 * math.pi
+        angle =  2 * pi + angle
+    elif angle > 2 * pi:  # if angle is over a full rotation, remove a full rotation (e.x. 370 -> 10)
+        angle = angle - 2 * pi
 
-    return math.degrees(angle)
+    return degrees(angle)
 
+def giftwrap_sort(edges, support_vector, giftwrap_vector):  # sort edges based on angle between giftwrap plane (minimum first)
+    return 0
 
-def clockwise_sort(point_set):  # sorts clockwise a set of points
+def merge(polyhedron1,polyhedron2):
 
-    # find avg of x coordinate of all points
-    x = []
-    for point in point_set:
-        x.append(point.x)
-    x_avg = sum(x) / len(x)
+    points = []  # points of merged convex hull
+    edges = []  # edges of merged convex hull
 
-    # find avg of y coordinate of all points
-    y = []
-    for point in point_set:
-        y.append(point.y)
-    y_avg = sum(y) / len(y)
-
-    # find center of set
-    center = Point(x_avg, y_avg)
-
-    # sort points clockwise around center
-    return sorted(point_set, key=lambda pt: clockwise_angle(center, pt))  # returns sorted list
-
-
-def divide(point_set):  # divides a set of points using x axis to two equal sets
-
-    if len(point_set) == 1:  # if the size of the set is 1
-        return point_set, set()  # return the set and an empty set
-
-    # sort list of points based on x coordinate
-    sorted_point_set = sorted(point_set, key=lambda pt: pt.x)
-
-    # divide space into equal size subsets
-    point_set1 = set()
-    point_set2 = set()
-    for idx, point in enumerate(sorted_point_set):
-        if idx < len(sorted_point_set)/2:
-            point_set1.add(point)
-        else:
-            point_set2.add(point)
-
-    return point_set1, point_set2
-
-
-def orientation(a, b, c):  # calculates orientation of segment (a,b) based on segment (b,c) where a,b,c are points
-
-    # if orientation > 0, the angle between the segments is 0 < angle < 180
-    # if orientation < 0, the angle between the segments is 180 < angle < 360
-    # if orientation is 0, the angle between the segments is k*180
-
-    return (b.y-a.y)*(c.x-b.x) - (c.y-b.y)*(b.x-a.x)
-
-
-def tangent(polyL, polyR):  # calculates lower tangent between two polyhedrons
-
-    # find rightmost point of left polygon
-    i_rightmost = 0  # index of rightmost point in left polygon (init with first point)
-    for i in range(1, len(polyL.points)):  # for every point in the polygon
-        if polyL.points[i_rightmost].x < polyL.points[i].x:  # if rightmost point is left of the current point
-            i_rightmost = i  # set current point as new rightmost point
-
-    # find leftmost point of right polygon
-    i_leftmost = 0
-    for i in range(1, len(polyR.points)):
-        if polyR.points[i_leftmost].x > polyR.points[i].x:
-            i_leftmost = i
-
-    # init tangents with line connecting the rightmost and leftmost point of left and right polygon respectively
-    upper_tangent = lower_tangent = (polyL.points[i_rightmost], polyR.points[i_leftmost])
-
-    # find upper tangent
-    i = i_leftmost  # current point index of right polygon (init with leftmost point of right polygon)
-    j = i_rightmost  # current point index of left polygon (init with rightmost point of left polygon)
-    done = 0
-    # while upper tangent crosses any polygon
-    while not done:
-        done = 1
-        # while upper tangent crosses right polygon
-        while orientation(upper_tangent[0], upper_tangent[1], polyR.points[(i + 1) % polyR.n]) <= 0:
-            # move right point of tangent up by moving current point to next point of right polygon (points are stored clockwise)
-            i = (i + 1) % polyR.n
-            upper_tangent = (upper_tangent[0], polyR.points[i])
-        # while upper tangent crosses left polygon
-        while orientation(upper_tangent[1], upper_tangent[0], polyL.points[(j - 1) % polyL.n]) >= 0:
-            done = 0
-            # move left point of tangent up by moving current point to previous point of left polygon
-            j = (j - 1) % polyL.n
-            upper_tangent = (polyL.points[j], upper_tangent[1])
-    upper_tangent_idx = (j, i)  # indices of each point of the upper tangent in the respective polygon
-
-    # find lower tangent
-    i = i_leftmost  # index of right polygon
-    j = i_rightmost  # index of left polygon
-    done = 0
-    # while lower tangent crosses any polygon
-    while not done:
-        done = 1
-        # while lower tangent crosses right polygon
-        while orientation(lower_tangent[0], lower_tangent[1], polyR.points[(i - 1) % polyR.n]) >= 0:
-            #move right point of tangent down by moving current point to previous point of right polygon
-            i = (i - 1) % polyR.n
-            lower_tangent = (lower_tangent[0], polyR.points[i])
-        # while lower tangent crosses left polygon
-        while orientation(lower_tangent[1], lower_tangent[0], polyL.points[(j + 1) % polyL.n]) <= 0:
-            done = 0
-            # move left point of tangent down by moving current point to next point of left polygon
-            j = (j + 1) % polyL.n
-            lower_tangent = (polyL.points[j], lower_tangent[1])
-
-    lower_tangent_idx = (j, i)
-
-    return upper_tangent, upper_tangent_idx, lower_tangent, lower_tangent_idx
-
-
-def merge(poly1,poly2):
-
-    #find left and right polyhedron
-    x1 = []  # x coordinates for every point in poly1
-    x2 = []  # x coordinates for every point in poly2
-    for point in poly1.points:
+    # find left and right polyhedron
+    x1 = []  # x coordinates for every point in polyhedron1
+    x2 = []  # x coordinates for every point in polyhedron2
+    for point in polyhedron1.points:
         x1.append(point.x)
-    for point in poly2.points:
+    for point in polyhedron2.points:
         x2.append(point.x)
-    if max(x1) <= min(x2):  # if poly1 is left and poly2 is right
-        polyL = poly1
-        polyR = poly2
+    if max(x1) <= min(x2):  # if polyhedron1 is left and polyhedron2 is right
+        polyhedronL = polyhedron1
+        polyhedronR = polyhedron2
     else:
-        polyL = poly2
-        polyR = poly1
+        polyhedronL = polyhedron2
+        polyhedronR = polyhedron1
 
-    # project polyhedrons in x-y plane to find lower tangent
+    # project polyhedrons on x-y plane to find upper tangent of resulting polygons (is also the tangent of polyhedrons)
+    polygonL_points = list()
+    polygonR_points = list()
+    for point in polyhedronL.points:
+        polygonL_points.append(ch2d.Point(point.x,point.y))
+    for point in polyhedron2.points:
+        polygonR_points.append(ch2d.Point(point.x,point.y))
+    polygonL = ch2d.Polygon(polygonL_points)
+    polygonR = ch2d.Polygon(polygonR_points)
 
-    # find upper and lower tangent of polygons
-    upper_tangent, upper_tangent_idx, lower_tangent, lower_tangent_idx = tangents(polyL,polyR)
+    # find upper tangent of polygons
+    upper_tangent, (upper_left_point_idx, upper_right_point_idx), _, _ = ch2d.tangents(polygonL, polygonR)
+    upper_left_point = polyhedronL.points[upper_left_point_idx]
+    upper_right_point = polygonR.points[upper_right_point_idx]
 
-    upper_left_idx, upper_right_idx = upper_tangent_idx
-    lower_left_idx, lower_right_idx = lower_tangent_idx
+    points.extend([upper_left_point, upper_right_point])
+    edges.extend((upper_left_point, upper_right_point))
 
-    points = []
 
-    # add the upper tangent points to the merged polygon
-    points.extend([upper_tangent[0],upper_tangent[1]])
+    # do gift wrapping around upper tangent to find convex hull faces
 
-    # add the rightside points of the right polygon to the merged polygon
-    if upper_right_idx != lower_right_idx:  # if end of upper tangent != start of lower tangent
-        i = (upper_right_idx + 1) % polyR.n
-        while i != lower_right_idx:
-            points.append(polyR.points[i])
-            i = (i + 1) % polyR.n
+    # get the upper tangent vector (support vector)
+    support_vector =  Point(
+        upper_right_point.x-upper_left_point.x,
+        upper_right_point.y-upper_left_point.y,
+        upper_right_point.z - upper_left_point.z)
+    support_vector_len = sqrt(pow(support_vector.x, 2) + pow(support_vector.y, 2))
+    support_vector = Point(support_vector.x / support_vector_len, support_vector.y / support_vector_len)
 
-    # add the lower tangent points to the merged polygon
-    if upper_right_idx != lower_right_idx:  # if end of upper tangent != start of lower tangent
-        if lower_left_idx != upper_left_idx:  # if end of lower tangent != start of upper tangent
-            points.extend([lower_tangent[1], lower_tangent[0]])
-        else:
-            points.append(lower_tangent[1])
-    else:  # if end of upper tangent == start of lower tangent
-        if lower_left_idx != upper_left_idx:  # if end of lower tangent != start of upper tangent
-            points.append(lower_tangent[0])
+    # get the plane normal vector (giftwrap vector) of the giftwrap plane
+    # calculated as the cross product (a x b) of the z axis and the support vector
 
-    # add the leftside points of the left polygon to the merged polygon
-    if lower_left_idx != upper_left_idx:  # if leftside points exist
-        i = (lower_left_idx + 1) % polyL.n
-        while i != upper_left_idx:
-            points.append(polyL.points[i])
-            i = (i + 1) % polyL.n
+    # z axis
+    ax = 0
+    ay = 0
+    az = 1
+    # support vector
+    bx = support_vector.x
+    by = support_vector.y
+    bz = support_vector.z
 
-    return Polygon(points)
+    giftwrap_vector = Point(ay*bz-az*by,az*bx-ax-bz,ax*by-ay*bx)
 
 
 def brute_hull(point_set):  # brute force convex hull
@@ -247,8 +141,8 @@ def brute_hull(point_set):  # brute force convex hull
     # the point space into two sets where one is empty and the other contains all other points.
     # if it does, add the trio of points to the convex hull polyhedron
 
-    poly_points = set()  # set of points to be added to the convex hull polygon
-    poly_edges = set()
+    poly_points = set()  # set of points to be added to the convex hull polyhedron
+    poly_edges = set()  # set of edges to be added to the convex hull polyhedron
 
     planes = combinations(point_set, 3)  # define all point trios
 
@@ -283,22 +177,22 @@ def brute_hull(point_set):  # brute force convex hull
             poly_edges.add((point1, point3))
             poly_edges.add((point2, point3))
 
-    #poly_points = clockwise_sort(poly_points)  # sort points in clockwise order
+    # poly_points = clockwise_sort(poly_points)  # sort points in clockwise order
     return Polyhedron(poly_points,poly_edges)  # return convex hull Polygon
 
 
-def convex_hull_3d(point_set):
+def convex_hull(point_set):
 
     if len(point_set) < 6:  # if the set has less than 6 points just do brute hull
         return brute_hull(point_set)
 
-    point_set1, point_set2 = divide(point_set)  # divide into two sets
+    point_set1, point_set2 = ch2d.divide(point_set)  # divide into two sets
 
     # generate convex hull polygons for each set
     if len(point_set1) != 0:
-        poly1 = convex_hull_3d(point_set1)
+        poly1 = convex_hull(point_set1)
     if len(point_set2) != 0:
-        poly2 = convex_hull_3d(point_set2)
+        poly2 = convex_hull(point_set2)
 
     # merge the two polygons
     if len(point_set1) != 0 and len(point_set2) != 0:  # if point sets are not empty

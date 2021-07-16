@@ -1,4 +1,4 @@
-import math
+from math import sqrt, pow, atan2, pi, degrees
 from itertools import combinations
 import matplotlib.pyplot as plt
 
@@ -37,7 +37,6 @@ def plot_convex_hull(point_set, polygon):
     polygon.plot()  # plot polygon
     plt.show()
 
-
 def clockwise_angle(a,b):  #calculates clockwise angle of vector (a,b)
 
     if a.x == b.x and a.y == b.y:  # if the segment length is zero return angle = 0
@@ -46,21 +45,21 @@ def clockwise_angle(a,b):  #calculates clockwise angle of vector (a,b)
     base_vector = Point(0, 1)  # the vector from which we will calculate the angle of the target vector (12 o'clock)
 
     vector = Point(b.x - a.x, b.y - a.y)  # target vector (basically the end point of a line that starts from (0,0))
-    vector_len = math.sqrt(math.pow(vector.x, 2) + math.pow(vector.y, 2))  # length of target vector
+    vector_len = sqrt(pow(vector.x, 2) + pow(vector.y, 2))  # length of target vector
 
     norm_vector = Point(vector.x / vector_len, vector.y / vector_len)  # normalized target vector
 
     # calculate angle
     dot_prod = norm_vector.x * base_vector.x + norm_vector.y * base_vector.y  # x1 * x2 + y1 * y2
     diff_prod = norm_vector.x * base_vector.y - norm_vector.y * base_vector.x  # x1 * y2 - y1 * x2
-    angle = math.atan2(diff_prod, dot_prod)
+    angle = atan2(diff_prod, dot_prod)
 
     if angle < 0:  # if angle is negative convert to positive (e.x. -30 -> 330)
-        angle =  2 * math.pi + angle
-    elif angle > 2 * math.pi:  # if angle is over a full rotation, remove a full rotation (e.x. 370 -> 10)
-        angle = angle - 2 * math.pi
+        angle =  2 * pi + angle
+    elif angle > 2 * pi:  # if angle is over a full rotation, remove a full rotation (e.x. 370 -> 10)
+        angle = angle - 2 * pi
 
-    return math.degrees(angle)
+    return degrees(angle)
 
 
 def clockwise_sort(point_set):  # sorts clockwise a set of points
@@ -151,8 +150,8 @@ def tangents(polyL, polyR):  # calculates upper and lower tangent between two po
     upper_tangent_idx = (j, i)  # indices of each point of the upper tangent in the respective polygon
 
     # find lower tangent
-    i = i_leftmost  # index of right polygon
-    j = i_rightmost  # index of left polygon
+    i = i_leftmost  # current point index of right polygon
+    j = i_rightmost  # current point index of left polygon
     done = 0
     # while lower tangent crosses any polygon
     while not done:
@@ -176,7 +175,7 @@ def tangents(polyL, polyR):  # calculates upper and lower tangent between two po
 
 def merge(poly1,poly2):
 
-    #find left and right polygon
+    # find left and right polygon
     x1 = []  # x coordinates for every point in poly1
     x2 = []  # x coordinates for every point in poly2
     for point in poly1.points:
@@ -265,7 +264,7 @@ def brute_hull(point_set):  # brute force convex hull
     return Polygon(poly_points)  # return convex hull Polygon
 
 
-def convex_hull_2d(point_set):
+def convex_hull(point_set):
 
     if len(point_set) < 6:  # if the set has less than 6 points just do brute hull
         return brute_hull(point_set)
@@ -274,9 +273,9 @@ def convex_hull_2d(point_set):
 
     # generate convex hull for each set
     if len(point_set1) != 0:
-        poly1 = convex_hull_2d(point_set1)
+        poly1 = convex_hull(point_set1)
     if len(point_set2) != 0:
-        poly2 = convex_hull_2d(point_set2)
+        poly2 = convex_hull(point_set2)
 
     # merge the two polygons
     if len(point_set1) != 0 and len(point_set2) != 0:  # if point sets are not empty
