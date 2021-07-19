@@ -1,7 +1,6 @@
 from math import sqrt, pow, acos, pi, degrees
 from itertools import combinations
 import matplotlib.pyplot as plt
-from mpl_toolkits.mplot3d import Axes3D
 import convex_hull_2d as ch2d
 
 
@@ -15,24 +14,19 @@ class Point:
 class Polyhedron:
     def __init__(self, points, edges):
         self.points = points
-        self.edges = edges   # list of edges (edge is a set() of Points)
+        self.edges = edges  # list of edges (edge is a set() of Points)
         self.n = len(edges)  # number of edges in polygon
 
-    def plot(self):
-        x = []
-        y = []
-        z = []
-
+    def plot(self, ax):
         for edge in self.edges:
+            x = []
+            y = []
+            z = []
             for point in edge:
                 x.append(point.x)
                 y.append(point.y)
                 z.append(point.z)
-
-        fig = plt.figure(figsize=(8, 6), dpi=100)
-        ax = fig.gca(projection='3d')
-        ax.plot(x, y, z)
-        plt.show()
+            ax.plot(x, y, z, 'b',linewidth=0.5)
 
 
 def plot_convex_hull(point_set, polyhedron):
@@ -42,39 +36,46 @@ def plot_convex_hull(point_set, polyhedron):
     for point in point_set:
         x.append(point.x)
         y.append(point.y)
-        z.append(point.y)
+        z.append(point.z)
     fig = plt.figure(figsize=(8, 6), dpi=100)
     ax = fig.gca(projection='3d')
-    ax.plot(x, y, 'ro', markersize=1)  # plot points
-    polyhedron.plot()  # plot polyhedron
-    plt.show()
+    polyhedron.plot(ax)  # plot polyhedron
+    ax.plot(x, y, z, 'ro', markersize=2)  # plot points
+    ax.set_xlabel('x')
+    ax.set_ylabel('y')
+    ax.set_zlabel('z')
 
-def dot(vec1,vec2):
+
+def dot(vec1, vec2):
     return vec1.x * vec2.x + vec1.y + vec2.y + vec1.z + vec2.z
 
-def giftwrap_angle(vector,support_vector,giftwrap_vector):  # calculates angle between polyhedron edge and giftwrap plane
+
+def giftwrap_angle(vector, support_vector,
+                   giftwrap_vector):  # calculates angle between polyhedron edge and giftwrap plane
 
     # project vector of polyhedron edge to the perpendicular plane of the giftwrap plane (its plane normal vector is the support vector)
     projected_vector = Point(
-        vector.x - support_vector.x * dot(vector,support_vector) / dot(support_vector,support_vector),
-        vector.y - support_vector.y * dot(vector,support_vector) / dot(support_vector,support_vector),
-        vector.z - support_vector.z * dot(vector,support_vector) / dot(support_vector,support_vector))
+        vector.x - support_vector.x * dot(vector, support_vector) / dot(support_vector, support_vector),
+        vector.y - support_vector.y * dot(vector, support_vector) / dot(support_vector, support_vector),
+        vector.z - support_vector.z * dot(vector, support_vector) / dot(support_vector, support_vector))
 
     # calculate angle between projected vector and giftwrap plane (its plane normal vector is the giftwrap vector)
-    angle = acos(abs(dot(vector,giftwrap_vector)/(sqrt(dot(vector))*sqrt(dot(giftwrap_vector)))))
+    angle = acos(abs(dot(vector, giftwrap_vector) / (sqrt(dot(vector)) * sqrt(dot(giftwrap_vector)))))
 
     if angle < 0:  # if angle is negative convert to positive (e.x. -30 -> 330)
-        angle =  2 * pi + angle
+        angle = 2 * pi + angle
     elif angle > 2 * pi:  # if angle is over a full rotation, remove a full rotation (e.x. 370 -> 10)
         angle = angle - 2 * pi
 
     return degrees(angle)
 
-def giftwrap_sort(edges, support_vector, giftwrap_vector):  # sort edges based on angle between giftwrap plane (minimum first)
+
+def giftwrap_sort(edges, support_vector,
+                  giftwrap_vector):  # sort edges based on angle between giftwrap plane (minimum first)
     return 0
 
-def merge(polyhedron1,polyhedron2):
 
+def merge(polyhedron1, polyhedron2):
     points = []  # points of merged convex hull
     edges = []  # edges of merged convex hull
 
@@ -96,9 +97,9 @@ def merge(polyhedron1,polyhedron2):
     polygonL_points = list()
     polygonR_points = list()
     for point in polyhedronL.points:
-        polygonL_points.append(ch2d.Point(point.x,point.y))
+        polygonL_points.append(ch2d.Point(point.x, point.y))
     for point in polyhedron2.points:
-        polygonR_points.append(ch2d.Point(point.x,point.y))
+        polygonR_points.append(ch2d.Point(point.x, point.y))
     polygonL = ch2d.Polygon(polygonL_points)
     polygonR = ch2d.Polygon(polygonR_points)
 
@@ -110,31 +111,39 @@ def merge(polyhedron1,polyhedron2):
     points.extend([upper_left_point, upper_right_point])
     edges.extend((upper_left_point, upper_right_point))
 
-
-    # do gift wrapping around upper tangent to find convex hull faces
-
     # get the upper tangent vector (support vector)
-    support_vector =  Point(
-        upper_right_point.x-upper_left_point.x,
-        upper_right_point.y-upper_left_point.y,
+    support_vector = Point(
+        upper_right_point.x - upper_left_point.x,
+        upper_right_point.y - upper_left_point.y,
         upper_right_point.z - upper_left_point.z)
     support_vector_len = sqrt(pow(support_vector.x, 2) + pow(support_vector.y, 2))
     support_vector = Point(support_vector.x / support_vector_len, support_vector.y / support_vector_len)
 
-    # get the plane normal vector (giftwrap vector) of the giftwrap plane
+    # do gift wrapping using support plane (giftwrap plane) to find convex hull faces:
+    # get the plane normal vector (giftwrap vector) of the giftwrap plane,
     # calculated as the cross product (a x b) of the z axis and the support vector
 
-    # z axis
+    # z axis (vector a)
     ax = 0
     ay = 0
     az = 1
-    # support vector
+    # support vector (vector b)
     bx = support_vector.x
     by = support_vector.y
     bz = support_vector.z
 
-    giftwrap_vector = Point(ay*bz-az*by,az*bx-ax-bz,ax*by-ay*bx)
+    giftwrap_vector = Point(ay * bz - az * by, az * bx - ax - bz, ax * by - ay * bx)  # cross product (a x b)
 
+    # initial A and B -> tangent A and B
+    # repeat:
+    # sort edges to A and B neighbors by angle to giftwrap plane
+    # find edge with smallest angle to neighbor C and add edge and point to convex hull
+    # to gift wrapping
+    # if C neighbor of A: C -> A else C -> B
+    # stop when A and B are tangent A and B again
+
+
+    # neighborsA =
 
 def brute_hull(point_set):  # brute force convex hull
     # checks for every trio of points if the plane created by the points separates
@@ -155,7 +164,7 @@ def brute_hull(point_set):  # brute force convex hull
         a = (point2.y - point1.y) * (point3.z - point1.z) - (point3.y - point1.y) * (point2.z - point1.z)
         b = (point2.z - point1.z) * (point3.x - point1.x) - (point3.z - point1.z) * (point2.x - point1.x)
         c = (point2.x - point1.x) * (point3.y - point1.y) - (point3.x - point1.x) * (point2.y - point1.y)
-        d = -(a * point1.x + b * point1.y + c + point1.z)
+        d = -(a * point1.x + b * point1.y + c * point1.z)
 
         point_set1 = set()  # side above the line
         point_set2 = set()  # side below the line
@@ -173,17 +182,16 @@ def brute_hull(point_set):  # brute force convex hull
             poly_points.add(point2)
             poly_points.add(point3)
             # add edges of trio to the convex hull
-            poly_edges.add((point1,point2))
+            poly_edges.add((point1, point2))
             poly_edges.add((point1, point3))
             poly_edges.add((point2, point3))
 
     # poly_points = clockwise_sort(poly_points)  # sort points in clockwise order
-    return Polyhedron(poly_points,poly_edges)  # return convex hull Polygon
+    return Polyhedron(poly_points, poly_edges)  # return convex hull Polygon
 
 
 def convex_hull(point_set):
-
-    if len(point_set) < 6:  # if the set has less than 6 points just do brute hull
+    if len(point_set) < 6000:  # if the set has less than n points just do brute hull
         return brute_hull(point_set)
 
     point_set1, point_set2 = ch2d.divide(point_set)  # divide into two sets
@@ -201,7 +209,3 @@ def convex_hull(point_set):
         return poly2
     else:
         return poly1
-
-
-
-

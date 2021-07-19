@@ -23,7 +23,7 @@ class Polygon:
         # repeat the first point to create a closed polygon shape
         x.append(self.points[0].x)
         y.append(self.points[0].y)
-        plt.plot(x, y)
+        plt.plot(x, y, 'b')
 
 
 def plot_convex_hull(point_set, polygon):
@@ -33,8 +33,8 @@ def plot_convex_hull(point_set, polygon):
         x.append(point.x)
         y.append(point.y)
     plt.figure(figsize=(8, 6), dpi=100)
-    plt.plot(x, y, 'ro', markersize=1)  # plot points
     polygon.plot()  # plot polygon
+    plt.plot(x, y, 'ro', markersize=1)  # plot points
     plt.show()
 
 def clockwise_angle(a,b):  #calculates clockwise angle of vector (a,b)
@@ -266,7 +266,7 @@ def brute_hull(point_set):  # brute force convex hull
 
 def convex_hull(point_set):
 
-    if len(point_set) < 6:  # if the set has less than 6 points just do brute hull
+    if len(point_set) < 10:  # if the set has less than n points just do brute hull
         return brute_hull(point_set)
 
     point_set1, point_set2 = divide(point_set)  # divide into two sets
