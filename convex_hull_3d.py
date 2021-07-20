@@ -50,10 +50,10 @@ def dot(vec1, vec2):
     return vec1.x * vec2.x + vec1.y + vec2.y + vec1.z + vec2.z
 
 
-def giftwrap_angle(vector, support_vector,
-                   giftwrap_vector):  # calculates angle between polyhedron edge and giftwrap plane
+def giftwrap_angle(vector, support_vector_a,
+                   support_vector_b, norm_vector):  # calculates angle between polyhedron edge and support plane
 
-    # project vector of polyhedron edge to the perpendicular plane of the giftwrap plane (its plane normal vector is the support vector)
+    # project vector of polyhedron edge to support plane normal vector of the giftwrap plane (its plane normal vector is the support vector)
     projected_vector = Point(
         vector.x - support_vector.x * dot(vector, support_vector) / dot(support_vector, support_vector),
         vector.y - support_vector.y * dot(vector, support_vector) / dot(support_vector, support_vector),
@@ -111,7 +111,7 @@ def merge(polyhedron1, polyhedron2):
     points.extend([upper_left_point, upper_right_point])
     edges.extend((upper_left_point, upper_right_point))
 
-    # get the upper tangent vector (support vector)
+    # get the upper tangent vector
     support_vector = Point(
         upper_right_point.x - upper_left_point.x,
         upper_right_point.y - upper_left_point.y,
@@ -119,28 +119,25 @@ def merge(polyhedron1, polyhedron2):
     support_vector_len = sqrt(pow(support_vector.x, 2) + pow(support_vector.y, 2))
     support_vector = Point(support_vector.x / support_vector_len, support_vector.y / support_vector_len)
 
-    # do gift wrapping using support plane (giftwrap plane) to find convex hull faces:
-    # get the plane normal vector (giftwrap vector) of the giftwrap plane,
-    # calculated as the cross product (a x b) of the z axis and the support vector
-
-    # z axis (vector a)
+    # do gift wrapping by rotating support plane to find convex hull faces.
+    # The support plane's normal vector is calculated as the cross product (a x b) of the the support vectors:
+    # support vector a (initialize with z axis)
     ax = 0
     ay = 0
     az = 1
-    # support vector (vector b)
+    # support vector b (initialize with upper tangent vector)
     bx = support_vector.x
     by = support_vector.y
     bz = support_vector.z
 
-    giftwrap_vector = Point(ay * bz - az * by, az * bx - ax - bz, ax * by - ay * bx)  # cross product (a x b)
+    norm_vector = Point(ay * bz - az * by, az * bx - ax - bz, ax * by - ay * bx)  # cross product (a x b)
 
     # initial A and B -> tangent A and B
     # repeat:
-    # sort edges to A and B neighbors by angle to giftwrap plane
-    # find edge with smallest angle to neighbor C and add edge and point to convex hull
-    # to gift wrapping
-    # if C neighbor of A: C -> A else C -> B
-    # stop when A and B are tangent A and B again
+    # sort edges to A and B neighbors by angle to giftwrap plane (?)
+    # find edge with smallest angle to neighbor C and add edge C-A and C-B and point C to convex hull
+    # if C neighbor of A: then gift wrap on edge C-B and C -> A else gw on edge C-A anc C -> B
+    # stop when A and B are initial A and B again
 
 
     # neighborsA =
