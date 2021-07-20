@@ -46,13 +46,13 @@ if dim_select == 2:
 elif dim_select == 3:
     if dataset_select == 0:
         dataset = pd.DataFrame(columns=['x', 'y', 'z'])
-        dataset = dataset.append({'x': 0, 'y': 0, 'z': 0}, ignore_index=True)
-        dataset = dataset.append({'x': 0, 'y': 0, 'z': 1}, ignore_index=True)
-        dataset = dataset.append({'x': 0, 'y': 1, 'z': 0}, ignore_index=True)
-        dataset = dataset.append({'x': 1, 'y': 0, 'z': 0}, ignore_index=True)
-        # dataset = dataset.append({'x': 0.5, 'y': 0.5, 'z': 0.5},ignore_index=True)
-        # dataset = dataset.append({'x': 0.4, 'y': 0.7, 'z': 0.7}, ignore_index=True)
-        dataset = dataset.append({'x': 0.7, 'y': 0.5, 'z': 0.3}, ignore_index=True)
+        dataset = dataset.append({'x': 0.1, 'y': 0.0, 'z': 0.0}, ignore_index=True)
+        dataset = dataset.append({'x': 0.3, 'y': 0.0, 'z': 0.3}, ignore_index=True)
+        dataset = dataset.append({'x': 0.0, 'y': 0.5, 'z': 0.0}, ignore_index=True)
+        dataset = dataset.append({'x': 0.5, 'y': 0.0, 'z': 0.0}, ignore_index=True)
+        dataset = dataset.append({'x': 0.4, 'y': 0.2, 'z': 0.5},ignore_index=True)
+        dataset = dataset.append({'x': 0.2, 'y': 0.7, 'z': 0.7}, ignore_index=True)
+        dataset = dataset.append({'x': 0.9, 'y': 0.5, 'z': 0.2}, ignore_index=True)
     elif dataset_select == 1:
         dataset = pd.DataFrame(random.uniform(0, 100, size=(50, 3)), columns=['x', 'y', 'z'])
     else:
