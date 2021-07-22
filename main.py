@@ -1,6 +1,7 @@
 import argparse
 from timeit import default_timer  # to calculate run time
 import pandas as pd
+import numpy as np
 from numpy import random
 from scipy import stats
 import matplotlib
@@ -8,12 +9,19 @@ import matplotlib.pyplot as plt
 import convex_hull_3d as ch3d
 import convex_hull_2d as ch2d
 
+
+# generate circle / sphere
+def sample_spherical(npoints, ndim=3):
+    vec = np.random.randn(ndim, npoints)
+    vec /= np.linalg.norm(vec, axis=0)
+    return vec
+
 # #  import arguments
 # parser = argparse.ArgumentParser()
 # parser.parse_args()
 
 dim_select = 3  # dimension selection
-dataset_select = 1  # dataset selection
+dataset_select = 0 # dataset selection
 
 print("Importing dataset...")
 
@@ -46,21 +54,29 @@ if dim_select == 2:
 elif dim_select == 3:
     if dataset_select == 0:
         dataset = pd.DataFrame(columns=['x', 'y', 'z'])
-        dataset = dataset.append({'x': 0.1, 'y': 0.0, 'z': 0.0}, ignore_index=True)
-        dataset = dataset.append({'x': 0.3, 'y': 0.0, 'z': 0.3}, ignore_index=True)
+        dataset = dataset.append({'x': 0.1, 'y': -0.2, 'z': 0.2}, ignore_index=True)
+        dataset = dataset.append({'x': 0.3, 'y': 0.1, 'z': 0.3}, ignore_index=True)
         dataset = dataset.append({'x': 0.0, 'y': 0.5, 'z': 0.0}, ignore_index=True)
-        dataset = dataset.append({'x': 0.5, 'y': 0.0, 'z': 0.0}, ignore_index=True)
+        dataset = dataset.append({'x': 0.5, 'y': 0.0, 'z': 1.0}, ignore_index=True)
         dataset = dataset.append({'x': 0.4, 'y': 0.2, 'z': 0.5},ignore_index=True)
         dataset = dataset.append({'x': 0.2, 'y': 0.7, 'z': 0.7}, ignore_index=True)
         dataset = dataset.append({'x': 0.9, 'y': 0.5, 'z': 0.2}, ignore_index=True)
+        # dataset = dataset.append({'x': 0.0, 'y': 0.0, 'z': 0.0}, ignore_index=True)
+        # dataset = dataset.append({'x': 0.2, 'y': 0.2, 'z': 0.0}, ignore_index=True)
+        # dataset = dataset.append({'x': 0.9, 'y': 0.0, 'z': 0.0}, ignore_index=True)
+        # dataset = dataset.append({'x': 0.9, 'y': 0.0, 'z': 0.0}, ignore_index=True)
     elif dataset_select == 1:
         dataset = pd.DataFrame(random.uniform(0, 100, size=(50, 3)), columns=['x', 'y', 'z'])
+    elif dataset_select == 2:
+        data = np.transpose(sample_spherical(20))
+        dataset = pd.DataFrame(data=data, columns=['x', 'y', 'z'])
+        print(0)
     else:
         raise ValueError('Wrong dataset number.')
 else:
     raise ValueError('Wrong dimension number. Select 2 or 3.')
 
-dataset = dataset[(abs(stats.zscore(dataset)) < 3).all(axis=1)]  # remove outliers
+# dataset = dataset[(abs(stats.zscore(dataset)) < 3).all(axis=1)]  # remove outliers
 
 # create points from dataset
 points = set()
