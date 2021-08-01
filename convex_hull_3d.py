@@ -1,9 +1,8 @@
-from math import sqrt, pow, acos, pi, degrees
+from math import sqrt, pow, atan2, pi, degrees
 from itertools import combinations
 import numpy as np
 import matplotlib
 import matplotlib.pyplot as plt
-import convex_hull_2d as ch2d
 
 
 class Point:
@@ -56,40 +55,70 @@ def dot(vec1, vec2=None):  # dot product
     return vec1.x * vec2.x + vec1.y * vec2.y + vec1.z * vec2.z
 
 
+def det(vec1, vec2, vec3):  # determinant
+    return vec1.x * (vec2.y * vec3.z - vec3.y * vec2.z) \
+           - vec2.y * (vec1.y * vec3.z - vec3.y * vec1.z) \
+           + vec3.x * (vec1.y * vec2.z - vec2.y * vec1.z)
+
+
 def cross(vec1, vec2):  # cross product
-    return Point(vec1.y * vec2.z - vec1.z * vec2.y, vec1.z * vec2.x - vec1.x - vec2.z, vec1.x * vec2.y - vec1.y * vec2.x)
+    return Point(vec1.y * vec2.z - vec1.z * vec2.y,
+                 vec1.z * vec2.x - vec1.x - vec2.z,
+                 vec1.x * vec2.y - vec1.y * vec2.x)
 
 
-def vectorize(edge):  # find normalized vector from an edge / segment (a,b)
+def plane_norm_vector(vec1, vec2):  # calculate plane normal vector from two vectors
+    norm_vector = cross(vec1, vec2)
+    norm_vector_len = sqrt(dot(norm_vector))
+    return Point(norm_vector.x / norm_vector_len, norm_vector.y / norm_vector_len, norm_vector.z / norm_vector_len)
+
+
+def plane(p1, p2 ,p3):  # get plane parameters from point trio
+    # plane parameters  a*x + b*y + c*z + d
+    a = (p2.y - p1.y) * (p3.z - p1.z) - (p3.y - p1.y) * (p2.z - p1.z)
+    b = (p2.z - p1.z) * (p3.x - p1.x) - (p3.z - p1.z) * (p2.x - p1.x)
+    c = (p2.x - p1.x) * (p3.y - p1.y) - (p3.x - p1.x) * (p2.y - p1.y)
+    d = -(a * p1.x + b * p1.y + c * p1.z)
+    return a, b, c, d
+
+
+def vectorize(edge):  # find normalized vector of an edge / segment (a,b)
     (a, b) = edge
     vector = Point(
         b.x - a.x,
         b.y - a.y,
         b.z - a.z)
-    vector_len = sqrt(pow(vector.x, 2) + pow(vector.y, 2) + pow(vector.z, 2))
-    vector = Point(vector.x / vector_len, vector.y / vector_len, vector.z / vector_len)
+    vector = Point(vector.x, vector.y , vector.z)
     return vector
 
 
 def giftwrap_angle(p, p1, p2, p3):
-    # calculates the angle of rotation of the support plane (formed by the three points p1, p2, p3) to reach the
+    # calculates the rotation angle of the support plane (formed by the three points p1, p2, p3) needed to reach the
     # potential new point p to be added to the convex hull.
 
     # points p2 and p3 are optional because in the first two steps of the algorithm we have less than three points
     # in the hull.
-    if p2 is None:
-        p2 = Point(p1.x + 0, p1.y + 1, p1.z + 0)
-    if p3 is None:
-        p3 = Point(p1.x + 0, p1.y + 0, p1.z + 1)
+    if p2 is None:  # if p2 is none set an imaginary point in the same y line
+        p2 = Point(p1.x + 0, p1.y + 10, p1.z + 0)
+    if p3 is None:  # if p3 is none set an imaginary point in the same z line
+        p3 = Point(p1.x + 0, p1.y + 0, p1.z + 10)
 
-    # find the normal vector of the support plane (cross product)
-    normal_vector = cross(vectorize((p1,p3)), vectorize((p1,p2)))
+    # vectors
+    a = vectorize((p1,p2))
+    b = vectorize((p1,p3))
+    c = vectorize((p1,p))
 
-    # find the normal vector of the rotated support plane (rotation axis: edge (p1,p2)
-    rotated_normal_vector = cross(vectorize((p1, p)), vectorize((p1, p2)))
+    # find the normal vector of the support plane (a x b , where a is p1-p2 and b is p1-p3)
+    # because we want the plane normal vector to point outside of the hull
+    norm_vector = plane_norm_vector(a,b)
 
-    # calculate rotation angle
-    angle = acos(round(dot(rotated_normal_vector, normal_vector) / (sqrt(dot(normal_vector)) * sqrt(dot(rotated_normal_vector))),8))  # round to avoid flop error
+    # find the normal vector of the rotated support plane (a x c, where c is p1-p and rotation axis is vector a)
+    rotated_normal_vector = plane_norm_vector(a,c)
+
+    # calculate rotation angle between norm_vector and rotated_normal_vector
+    dot_prod = dot(norm_vector, rotated_normal_vector)
+    determinant = det(rotated_normal_vector, norm_vector, plane_norm_vector(norm_vector, rotated_normal_vector))
+    angle = atan2(determinant, dot_prod)
 
     if angle < 0:  # if angle is negative convert to positive (e.x. -30 -> 330)
         angle = 2 * pi + angle
@@ -99,59 +128,74 @@ def giftwrap_angle(p, p1, p2, p3):
     return degrees(angle)
 
 
-def giftwrap(p1, p2, p3, points, poly_points, poly_edges):  # rotates support plane around edge p1-p2 to find new points to be added to the convex hull
-
-    # terminate algorithm when the giftwrap closes (algorithm reaches initial points)
-    # if len(poly_edges) > 3 and ([p1, p2, p3] in [poly_points[0], poly_points[1], poly_points[2]]):
-    #     print('done')
+def giftwrap(p1, p2, p3, points, poly_points, poly_edges, poly_facets):  # rotates support plane around edge p1-p2 to find new points to be added to the convex hull
 
     # sort points based on rotation angle of support plane (point1, point2, point3)
-    other_points = [point for point in points if point not in [p1, p2, p3]]
+    other_points = [point for point in points if point not in [p1, p2, p3]]  # point that are not p1, p2 or p3
     sorted_points = sorted(other_points, key=lambda p: giftwrap_angle(p, p1, p2, p3))
 
-    # add smallest angle point p' to the convex hull if the new point p is not p1, p2 or p3
-    p = sorted_points[0]  # new point p
+    p = sorted_points[0]  # potential new point p
+
+    # terminate algorithm when the giftwrap closes (algorithm reaches existing facet)
+    if len(poly_edges) > 3 and (frozenset([p1, p2, p]) in poly_facets):
+        return None
+
+    # add smallest angle point p to the convex hull
     poly_points.add(p)
-    poly_edges.add((p1,p))
-    if p2: poly_edges.add((p2,p))
+    # add the new edges (or edge) to the convex hull
+    poly_edges.add(frozenset([p1,p]))  # a frozen set is used because a set cannot contain sets (we need a set because the order of points on the edge doesn't matter)
+    if p2:
+        poly_edges.add(frozenset([p2,p]))
+        poly_facets.add(frozenset([p1, p2, p3]))
+
+
+    # start of test lines (delete in final version) ####################################################################
 
     test_key = giftwrap_angle(p, p1, p2, p3)
-    test_keys = [giftwrap_angle(p, p1, p2, p3) for p in sorted_points]
+    test_keys = [(p, giftwrap_angle(p, p1, p2, p3)) for p in sorted_points]
 
-    # test lines
     matplotlib.use("TkAgg")
     plt.ion()
     ax = plot_convex_hull(points,Polyhedron(poly_points,poly_edges))
     if p2 is None:
-        p2_ = Point(p1.x + 0, p1.y + 1, p1.z + 0)
+        p2_temp = Point(p1.x + 0, p1.y + 10, p1.z + 0)
     else:
-        p2_ = p2
+        p2_temp = p2
     if p3 is None:
-        p3_ = Point(p1.x + 0, p1.y + 0, p1.z + 1)
+        p3_temp = Point(p1.x + 0, p1.y + 0, p1.z + 10)
     else:
-        p3_ = p3
-    # define line parameters  a*x + b*y + c*z + d
-    normal_vector = cross(vectorize((p1,p3_)), vectorize((p1,p2_)))
-    a = normal_vector.x
-    b = normal_vector.y
-    c = normal_vector.z
-    d = -(a * p1.x + b * p1.y + c * p1.z)
+        p3_temp = p3
+    (a, b, c, d) = plane(p1, p2_temp, p3_temp)
+
     if c != 0:
-        xx, yy = np.meshgrid([p1.x,p2_.x], [p1.y,p2_.y])
-        zz = - (d + b*yy + a*xx) / c
-    else:
-        yy, zz = np.meshgrid([0,1], [0,1])
-        xx = - (d + c*zz + b*yy) / a
+        xx, yy = np.meshgrid([p2_temp.x, p3_temp.x], [p2_temp.y, p3_temp.y])
+        zz = - (d + b * yy + a * xx) / c
+    elif a != 0:
+        yy, zz = np.meshgrid([p2_temp.y, p3_temp.y], [p2_temp.z, p3_temp.z])
+        xx = - (d + b * yy + c * zz) / a
+    elif b != 0:
+        xx, zz = np.meshgrid([p2_temp.x, p3_temp.x], [p2_temp.z, p3_temp.z])
+        yy = - (d + a * xx + c * zz) / b
 
     ax.plot_surface(xx, yy, zz, alpha=0.2)
     plt.waitforbuttonpress(timeout=-1)
 
-    # rotate support plane around new edges p1-p and p2-p recursively
-    if p3:
-        giftwrap(p, p1, p2, points, poly_points, poly_edges)
-        giftwrap(p2, p, p1, points, poly_points, poly_edges)
-    else:
-        giftwrap(p1, p, None, points, poly_points, poly_edges)
+    # end of test lines ###############################################################################################
+
+    # rotate support plane around new edges recursively
+    if p2:  # if we have three points (p1, p2 and p)
+        # rotate on new edge p1-p
+        print('left')
+        giftwrap(p1, p, p2, points, poly_points, poly_edges, poly_facets)
+        # rotate on new edge p2-p
+        print('right')
+        giftwrap(p, p1, p2, points, poly_points, poly_edges, poly_facets)
+    else:  # if we have only two points  (p1 and p)
+        # rotate on new edge p1-p
+        print('center')
+        giftwrap(p1, p, None, points, poly_points, poly_edges, poly_facets)
+
+    return Polyhedron(poly_points,poly_edges)
 
 
 def brute_hull(point_set):  # brute force convex hull
@@ -166,44 +210,45 @@ def brute_hull(point_set):  # brute force convex hull
     planes = combinations(point_set, 3)  # define all point trios
 
     for plane in planes:
-        point1 = plane[0]
-        point2 = plane[1]
-        point3 = plane[2]
+        # point trio
+        p1 = plane[0]
+        p2 = plane[1]
+        p3 = plane[2]
 
         # define plane parameters  a*x + b*y + c*z + d
-        a = (point2.y - point1.y) * (point3.z - point1.z) - (point3.y - point1.y) * (point2.z - point1.z)
-        b = (point2.z - point1.z) * (point3.x - point1.x) - (point3.z - point1.z) * (point2.x - point1.x)
-        c = (point2.x - point1.x) * (point3.y - point1.y) - (point3.x - point1.x) * (point2.y - point1.y)
-        d = -(a * point1.x + b * point1.y + c * point1.z)
+        a = (p2.y - p1.y) * (p3.z - p1.z) - (p3.y - p1.y) * (p2.z - p1.z)
+        b = (p2.z - p1.z) * (p3.x - p1.x) - (p3.z - p1.z) * (p2.x - p1.x)
+        c = (p2.x - p1.x) * (p3.y - p1.y) - (p3.x - p1.x) * (p2.y - p1.y)
+        d = -(a * p1.x + b * p1.y + c * p1.z)
 
         point_set1 = set()  # side above the line
         point_set2 = set()  # side below the line
 
-        for point4 in point_set:  # point to be checked in which side of the line it is located
-            if point4 != point1 and point4 != point2 and point4 != point3:
-                if a * point4.x + b * point4.y + c * point4.z + d < 0:  # if point is below plane
-                    point_set1.add(point4)
-                elif a * point4.x + b * point4.y + c * point4.z + d > 0:  # if point is above plane
-                    point_set2.add(point4)
+        for p4 in point_set:  # point to be checked in which side of the line it is located
+            if p4 != p1 and p4 != p2 and p4 != p3:
+                if a * p4.x + b * p4.y + c * p4.z + d < 0:  # if point is below plane
+                    point_set1.add(p4)
+                elif a * p4.x + b * p4.y + c * p4.z + d > 0:  # if point is above plane
+                    point_set2.add(p4)
 
         if len(point_set1) == 0 or len(point_set2) == 0:  # if any of the sides above or below the line is empty
             # add trio of points to the convex hull
-            poly_points.add(point1)
-            poly_points.add(point2)
-            poly_points.add(point3)
+            poly_points.add(p1)
+            poly_points.add(p2)
+            poly_points.add(p3)
             # add edges of trio to the convex hull
-            poly_edges.add((point1, point2))
-            poly_edges.add((point1, point3))
-            poly_edges.add((point2, point3))
+            poly_edges.add(frozenset([p1, p2]))
+            poly_edges.add(frozenset([p1, p3]))
+            poly_edges.add(frozenset([p2, p3]))
 
-    # poly_points = clockwise_sort(poly_points)  # sort points in clockwise order
     return Polyhedron(poly_points, poly_edges)  # return convex hull Polygon
 
 
 def convex_hull(points):
 
-    poly_points = set()  # set of points to be added to the convex hull polyhedron
-    poly_edges = set()  # set of edges to be added to the convex hull polyhedron
+    poly_points = set()  # set of points of the convex hull polyhedron
+    poly_edges = set()  # set of edges of the convex hull polyhedron
+    poly_facets = set()  # set of facets of the convex hull polyhedron
 
     # initialize support plane with initial trio of points
     p1 = sorted(points, key=lambda pt: pt.x)[-1]  # initialize first point on convex hull as rightmost point in x axis
@@ -211,25 +256,8 @@ def convex_hull(points):
     p2 = None
     p3 = None
 
-    giftwrap(p1, p2, p3, points, poly_points, poly_edges)
+    # uncomment the one line below to use giftwrap algorithm
+    return giftwrap(p1, p2, p3, points, poly_points, poly_edges, poly_facets)
+    # uncomment the one line below to use brute hull algorithm
+    # return brute_hull(points)
 
-
-    # return brute_hull(point_set)
-    # if len(point_set) < 6000:  # if the set has less than n points just do brute hull
-    #     return brute_hull(point_set)
-    #
-    # point_set1, point_set2 = ch2d.divide(point_set)  # divide into two sets
-    #
-    # # generate convex hull polygons for each set
-    # if len(point_set1) != 0:
-    #     poly1 = convex_hull(point_set1)
-    # if len(point_set2) != 0:
-    #     poly2 = convex_hull(point_set2)
-    #
-    # # merge the two polygons
-    # if len(point_set1) != 0 and len(point_set2) != 0:  # if point sets are not empty
-    #     return merge(poly1, poly2)
-    # elif len(point_set1) == 0:  # if only the second point set isn't empty then return polygon 2
-    #     return poly2
-    # else:
-    #     return poly1

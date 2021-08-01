@@ -48,7 +48,7 @@ def vectorize(edge):  # find normalized vector from an edge / segment (a,b)
     return vector
 
 
-def clockwise_angle(edge):  #calculates clockwise angle of edge / segment (a,b)
+def clockwise_angle(edge):  #calculates clockwise angle between x-axis and edge / segment (a,b)
     (a, b) = edge
     if a.x == b.x and a.y == b.y:  # if the segment length is zero return angle = 0
         return 0
@@ -58,9 +58,9 @@ def clockwise_angle(edge):  #calculates clockwise angle of edge / segment (a,b)
     vector = vectorize((a,b))  # edge vector
 
     # calculate angle
-    dot_prod = vector.x * base_vector.x + vector.y * base_vector.y  # x1 * x2 + y1 * y2
-    diff_prod = vector.x * base_vector.y - vector.y * base_vector.x  # x1 * y2 - y1 * x2
-    angle = atan2(diff_prod, dot_prod)
+    dot = vector.x * base_vector.x + vector.y * base_vector.y  # x1 * x2 + y1 * y2  (dot product)
+    det = vector.x * base_vector.y - vector.y * base_vector.x  # x1 * y2 - y1 * x2  (determinant)
+    angle = atan2(det, dot)
 
     if angle < 0:  # if angle is negative convert to positive (e.x. -30 -> 330)
         angle =  2 * pi + angle
@@ -240,7 +240,7 @@ def brute_hull(point_set):  # brute force convex hull
     # the point space into two sets where one is empty and the other contains all other points.
     # if it does, add it to the convex hull polygon
 
-    poly_points = set()  # set of points to be added to the convex hull polygon
+    poly_points = set()  # set of points of the convex hull polygon
 
     lines = combinations(point_set, 2)  # define all point pairs
 
