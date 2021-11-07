@@ -142,7 +142,7 @@ def giftwrap(p1, p2, p3, points, poly_points, poly_edges, poly_facets):  # rotat
     other_points = [point for point in points if point not in [p1, p2, p3]]  # point that are not p1, p2 or p3
     sorted_points = sorted(other_points, key=lambda p: giftwrap_angle(p, p1, p2, p3))
 
-    p = sorted_points[0]  # potential new point p
+    p = sorted_points[0]  # potential new point p (smallest angle)
 
     # terminate algorithm when the giftwrap closes (algorithm reaches existing facet)
     if len(poly_edges) > 3 and (frozenset([p1, p2, p]) in poly_facets):
@@ -189,17 +189,17 @@ def brute_hull(point_set):  # brute force convex hull
         # define plane parameters  a*x + b*y + c*z + d
         (a, b, c, d) = plane_params(p1, p2, p3)
 
-        point_set1 = set()  # side above the line
-        point_set2 = set()  # side below the line
+        point_set1 = set()  # side above the plane
+        point_set2 = set()  # side below the plane
 
-        for p4 in point_set:  # point to be checked in which side of the line it is located
+        for p4 in point_set:  # point to be checked in which side of the plane it is located
             if p4 != p1 and p4 != p2 and p4 != p3:
                 if a * p4.x + b * p4.y + c * p4.z + d < 0:  # if point is below plane
                     point_set1.add(p4)
                 elif a * p4.x + b * p4.y + c * p4.z + d > 0:  # if point is above plane
                     point_set2.add(p4)
 
-        if len(point_set1) == 0 or len(point_set2) == 0:  # if any of the sides above or below the line is empty
+        if len(point_set1) == 0 or len(point_set2) == 0:  # if any of the sides above or below the plane is empty
             # add trio of points to the convex hull
             poly_points.add(p1)
             poly_points.add(p2)
