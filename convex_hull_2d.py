@@ -26,33 +26,42 @@ class Polygon:
         plt.plot(x, y, 'b')
 
 
-def plot_convex_hull(point_set, polygon):
+def plot_convex_hull(point_set, polygon, title):
     x = []
     y = []
     for point in point_set:
         x.append(point.x)
         y.append(point.y)
     plt.figure(figsize=(8, 6), dpi=100)
+    plt.title(title)
     polygon.plot()  # plot polygon
     plt.plot(x, y, 'ro', markersize=1)  # plot points
     plt.show()
 
-def clockwise_angle(a,b):  #calculates clockwise angle of vector (a,b)
 
+def vectorize(edge):  # find normalized vector from an edge (a,b)
+    (a, b) = edge
+    vector = Point(
+        b.x - a.x,
+        b.y - a.y,)
+    vector_len = sqrt(pow(vector.x, 2) + pow(vector.y, 2))
+    vector = Point(vector.x / vector_len, vector.y / vector_len)
+    return vector
+
+
+def clockwise_angle(edge):  #calculates clockwise angle between x-axis and edge / segment (a,b)
+    (a, b) = edge
     if a.x == b.x and a.y == b.y:  # if the segment length is zero return angle = 0
         return 0
 
-    base_vector = Point(0, 1)  # the vector from which we will calculate the angle of the target vector (12 o'clock)
+    base_vector = Point(0, 1)  # the vector from which we will calculate the angle of the edge vector (12 o'clock)
 
-    vector = Point(b.x - a.x, b.y - a.y)  # target vector (basically the end point of a line that starts from (0,0))
-    vector_len = sqrt(pow(vector.x, 2) + pow(vector.y, 2))  # length of target vector
-
-    norm_vector = Point(vector.x / vector_len, vector.y / vector_len)  # normalized target vector
+    vector = vectorize((a,b))  # edge vector
 
     # calculate angle
-    dot_prod = norm_vector.x * base_vector.x + norm_vector.y * base_vector.y  # x1 * x2 + y1 * y2
-    diff_prod = norm_vector.x * base_vector.y - norm_vector.y * base_vector.x  # x1 * y2 - y1 * x2
-    angle = atan2(diff_prod, dot_prod)
+    dot = vector.x * base_vector.x + vector.y * base_vector.y  # x1 * x2 + y1 * y2  (dot product)
+    det = vector.x * base_vector.y - vector.y * base_vector.x  # x1 * y2 - y1 * x2  (determinant)
+    angle = atan2(det, dot)
 
     if angle < 0:  # if angle is negative convert to positive (e.x. -30 -> 330)
         angle =  2 * pi + angle
@@ -80,7 +89,7 @@ def clockwise_sort(point_set):  # sorts clockwise a set of points
     center = Point(x_avg, y_avg)
 
     # sort points clockwise around center
-    return sorted(point_set, key=lambda pt: clockwise_angle(center, pt))  # returns sorted list() from input set()
+    return sorted(point_set, key=lambda pt: clockwise_angle((center, pt)))  # returns sorted list() from input set()
 
 
 def divide(point_set):  # divides a set of points using x axis to two equal sets
@@ -232,7 +241,7 @@ def brute_hull(point_set):  # brute force convex hull
     # the point space into two sets where one is empty and the other contains all other points.
     # if it does, add it to the convex hull polygon
 
-    poly_points = set()  # set of points to be added to the convex hull polygon
+    poly_points = set()  # set of points of the convex hull polygon
 
     lines = combinations(point_set, 2)  # define all point pairs
 
@@ -266,7 +275,7 @@ def brute_hull(point_set):  # brute force convex hull
 
 def convex_hull(point_set):
 
-    if len(point_set) < 10:  # if the set has less than n points just do brute hull
+    if len(point_set) < 6:  # if the set has less than n points just do brute hull
         return brute_hull(point_set)
 
     point_set1, point_set2 = divide(point_set)  # divide into two sets
