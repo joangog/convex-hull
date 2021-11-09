@@ -5,7 +5,7 @@ Convex Hull Implementation for 2D and 3D data using Divide and Conquer algorithm
 
 
 
-### Datasets used:
+### Datasets:
 
 •	2D Uniform Dataset (10K)
 
@@ -39,4 +39,10 @@ Convex Hull Implementation for 2D and 3D data using Divide and Conquer algorithm
   <img src="/plots/3d_hand.gif" width="300">
   <img src="/plots/3d_gauss.gif" width="300">
   <img src="/plots/3d_uni.gif" width="300">
+</p>
+
+
+### 2D Convex Hull Time Complexity:
+<p align="center">
+  <img src="/plots/2d_complexity.png" width="500">
 </p>
